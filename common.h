@@ -100,27 +100,16 @@
 #define RACE_FIEND        0x8
 #define RACE_ZOMBIE       0x10
 #define RACE_MACHINE      0x20
-#define RACE_AQUA         0x40
-#define RACE_PYRO         0x80
-#define RACE_ROCK         0x100
-#define RACE_WINGEDBEAST  0x200
+#define RACE_AQUATIC      0x40
+#define RACE_ELEMENTAL    0x80
 #define RACE_PLANT        0x400
 #define RACE_INSECT       0x800
-#define RACE_THUNDER      0x1000
 #define RACE_DRAGON       0x2000
 #define RACE_BEAST        0x4000
-#define RACE_BEASTWARRIOR 0x8000
-#define RACE_DINOSAUR     0x10000
-#define RACE_FISH         0x20000
-#define RACE_SEASERPENT   0x40000
 #define RACE_REPTILE      0x80000
 #define RACE_PSYCHIC      0x100000
 #define RACE_DIVINE       0x200000
-#define RACE_CREATORGOD   0x400000
-#define RACE_WYRM         0x800000
-#define RACE_CYBERSE      0x1000000
-#define RACE_CYBORG       0x2000000
-#define RACE_MAX          RACE_CYBORG
+#define RACE_MAX          RACE_DIVINE
 
 //Reasons
 #define REASON_DESTROY     0x1
