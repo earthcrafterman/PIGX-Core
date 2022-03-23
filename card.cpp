@@ -3443,8 +3443,10 @@ int32_t card::get_summon_tribute_count() {
 		return 0;
 	else if(level < 7)
 		min = max = 1;
-	else
+	else if (level < 10)
 		min = max = 2;
+	else
+		min = max = 3;
 	effect_set eset;
 	filter_effect(EFFECT_DECREASE_TRIBUTE, &eset);
 	for(const auto& peffect : eset) {
