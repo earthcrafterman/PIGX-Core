@@ -608,7 +608,7 @@ int32_t field::recover(uint16_t step, effect* reason_effect, uint32_t reason, ui
 				pduel->lua->add_param(reason, PARAM_TYPE_INT);
 				pduel->lua->add_param(reason_player, PARAM_TYPE_INT);
 				if(peff->check_value_condition(3)) {
-					damage(reason_effect, (reason & REASON_RDAMAGE) | REASON_RRECOVER | REASON_EFFECT, reason_player, 0, playerid, amount, is_step);
+					damage(reason_effect, (reason & REASON_RDAMAGE) | REASON_RRECOVER | REASON_EFFECT, reason_player, 0, playerid, amount / 4, is_step);
 					core.units.begin()->step = 2;
 					return FALSE;
 				}
