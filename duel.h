@@ -12,7 +12,7 @@
 #include "ocgapi.h"
 #include "group.h"
 #include "interpreter.h"
-#include <random>
+#include "RNG/Xoshiro256.hpp"
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
@@ -31,13 +31,13 @@ struct card_data {
 	uint32_t type{};
 	uint32_t level{};
 	uint32_t attribute{};
-	uint32_t race{};
+	uint64_t race{};
 	int32_t attack{};
 	int32_t defense{};
 	uint32_t lscale{};
 	uint32_t rscale{};
 	uint32_t link_marker{};
-	card_data(OCG_CardData* data);
+	card_data(const OCG_CardData& data);
 	card_data() {};
 };
 
@@ -65,9 +65,6 @@ public:
 	std::vector<uint8_t> query_buffer;
 	field* game_field;
 	interpreter* lua;
-	//std::mt19937 uses fast32_t, not ensuring cross platform compatibility
-	std::mersenne_twister_engine<uint32_t, 32, 624, 397, 31, 0x9908b0df,
-		11, 0xffffffff, 7, 0x9d2c5680, 15, 0xefc60000, 18, 1812433253> random;
 	std::unordered_set<card*> cards;
 	std::unordered_set<card*> assumes;
 	std::unordered_set<group*> groups;
@@ -87,7 +84,7 @@ public:
 	std::unordered_map<uint32_t/* hashed string */, SCRIPT_LOAD_STATUS> loaded_scripts;
 	
 	duel() = delete;
-	explicit duel(OCG_DuelOptions options);
+	explicit duel(const OCG_DuelOptions& options);
 	~duel();
 	void clear();
 	
@@ -113,7 +110,7 @@ public:
 	void set_response(const void* resp, size_t len);
 	int32_t get_next_integer(int32_t l, int32_t h);
 	duel_message* new_message(uint8_t message);
-	card_data const* read_card(uint32_t code, card_data* copyable = nullptr);
+	const card_data& read_card(uint32_t code);
 	inline void handle_message(const char* message, OCG_LogTypes type) {
 		handle_message_callback(handle_message_payload, message, type);
 	}
@@ -122,6 +119,7 @@ public:
 	}
 private:
 	std::deque<duel_message> messages;
+	RNG::Xoshiro256StarStar random;
 	OCG_DataReader read_card_callback;
 	OCG_ScriptReader read_script_callback;
 	OCG_LogHandler handle_message_callback;

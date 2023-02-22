@@ -45,7 +45,7 @@ struct card_state {
 	uint32_t lscale{};
 	uint32_t rscale{};
 	uint32_t attribute{};
-	uint32_t race{};
+	uint64_t race{};
 	int32_t attack{};
 	int32_t defense{};
 	int32_t base_attack{};
@@ -59,7 +59,25 @@ struct card_state {
 	card* reason_card{};
 	uint8_t reason_player{};
 	effect* reason_effect{};
-	bool is_location(int32_t loc) const;
+	template<typename T>
+	static bool is_location(const T& loc_info, uint16_t loc) {
+		if(loc_info.location & static_cast<uint8_t>(loc))
+			return true;
+		if((loc & LOCATION_EMZONE) && loc_info.location == LOCATION_MZONE && loc_info.sequence >= 5)
+			return true;
+		if((loc & LOCATION_MMZONE) && loc_info.location == LOCATION_MZONE && loc_info.sequence < 5)
+			return true;
+		if((loc & LOCATION_STZONE) && loc_info.location == LOCATION_SZONE && loc_info.sequence < 5)
+			return true;
+		if((loc & LOCATION_FZONE) && loc_info.location == LOCATION_SZONE && loc_info.sequence == 5)
+			return true;
+		if((loc & LOCATION_PZONE) && loc_info.location == LOCATION_SZONE && loc_info.pzone)
+			return true;
+		return false;
+	}
+	bool is_location(uint16_t loc) const {
+		return is_location(*this, loc);
+	}
 	void set0xff();
 };
 
@@ -75,7 +93,7 @@ public:
 	using relation_map = std::unordered_map<card*, uint32_t>;
 	using counter_map = std::map<uint16_t, std::array<uint16_t, 2>>;
 	using effect_count = std::map<uint32_t, int32_t>;
-	class attacker_map : public std::unordered_map<uint16_t, std::pair<card*, uint32_t>> {
+	class attacker_map : public std::unordered_map<uint32_t, std::pair<card*, uint32_t>> {
 	public:
 		void addcard(card* pcard);
 		uint32_t findcard(card* pcard);
@@ -103,8 +121,14 @@ public:
 	card_state temp{};
 	card_state current{};
 	uint8_t owner{ PLAYER_NONE };
-	uint8_t summon_player{};
-	uint32_t summon_info{};
+	struct summon_info {
+		uint32_t type{};
+		uint8_t player{};
+		uint8_t location{};
+		uint8_t sequence{};
+		bool pzone{};
+	};
+	summon_info summon;
 	uint32_t status{};
 	uint32_t cover{};
 	sendto_param_t sendto_param{};
@@ -119,7 +143,7 @@ public:
 	uint8_t attacked_count{};
 	uint8_t attack_all_target{};
 	uint8_t attack_controler{};
-	uint16_t cardid{};
+	uint32_t cardid{};
 	uint32_t fieldid{};
 	uint32_t fieldid_r{};
 	uint16_t turnid{};
@@ -133,7 +157,7 @@ public:
 	uint32_t spsummon_code{};
 	uint16_t spsummon_counter[2]{};
 	uint16_t spsummon_counter_rst[2]{};
-	std::map<uint32_t, uint32_t> assume;
+	std::map<uint32_t, uint64_t> assume;
 	card* equiping_target{};
 	card* pre_equip_target{};
 	card* overlay_target{};
@@ -160,6 +184,9 @@ public:
 	explicit card(duel* pd);
 	~card() = default;
 	static bool card_operation_sort(card* c1, card* c2);
+	static bool match_setcode(uint16_t set_code, uint16_t to_match) {
+		return (set_code & 0xfffu) == (to_match & 0xfffu) && (set_code & to_match) == set_code;
+	}
 	bool is_extra_deck_monster() const { return !!(data.type & (TYPE_FUSION | TYPE_SYNCHRO | TYPE_XYZ | TYPE_LINK)) && !!(data.type & TYPE_MONSTER); }
 
 	void get_infos(int32_t query_flag);
@@ -168,15 +195,15 @@ public:
 	uint32_t second_code(uint32_t code);
 	uint32_t get_code();
 	uint32_t get_another_code();
-	uint32_t get_summon_code(card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
-	int32_t is_set_card(uint32_t set_code);
-	int32_t is_origin_set_card(uint32_t set_code);
-	int32_t is_pre_set_card(uint32_t set_code);
-	int32_t is_sumon_set_card(uint32_t set_code, card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
-	uint32_t get_set_card();
-	std::set<uint16_t> get_origin_set_card();
-	uint32_t get_pre_set_card();
-	uint32_t get_summon_set_card(card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
+	void get_summon_code(std::set<uint32_t>& codes, card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
+	int32_t is_set_card(uint16_t set_code);
+	int32_t is_origin_set_card(uint16_t set_code);
+	int32_t is_pre_set_card(uint16_t set_code);
+	int32_t is_summon_set_card(uint16_t set_code, card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
+	void get_set_card(std::set<uint16_t>& setcodes);
+	const std::set<uint16_t>& get_origin_set_card() const { return data.setcodes; }
+	void get_pre_set_card(std::set<uint16_t>& setcodes);
+	void get_summon_set_card(std::set<uint16_t>& setcodes, card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
 	uint32_t get_type(card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
 	int32_t get_base_attack();
 	int32_t get_attack();
@@ -189,11 +216,14 @@ public:
 	uint32_t get_ritual_level(card* pcard);
 	uint32_t check_xyz_level(card* pcard, uint32_t lv);
 	uint32_t get_attribute(card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
-	uint32_t get_race(card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
+	uint64_t get_race(card* scard = 0, uint64_t sumtype = 0, uint8_t playerid = 2);
 	uint32_t get_lscale();
 	uint32_t get_rscale();
 	uint32_t get_link_marker();
-	int32_t is_link_marker(uint32_t dir, uint32_t marker = 0);
+	int32_t is_link_marker(uint32_t dir);
+	int32_t is_link_marker(uint32_t dir, uint32_t marker) const {
+		return (int32_t)(marker & dir);
+	}
 	uint32_t get_linked_zone(bool free = false);
 	void get_linked_cards(card_set* cset, uint32_t zones = 0);
 	uint32_t get_mutual_linked_zone();
@@ -201,10 +231,23 @@ public:
 	int32_t is_link_state();
 	int32_t is_mutual_linked(card* pcard, uint32_t zones1 = 0, uint32_t zones2 = 0);
 	int32_t is_extra_link_state();
-	int32_t is_position(int32_t pos);
-	void set_status(uint32_t status, int32_t enabled);
-	int32_t get_status(uint32_t status);
-	int32_t is_status(uint32_t status);
+	int32_t is_position(int32_t pos) const {
+		return (int32_t)(current.position & pos);
+	}
+	void set_status(uint32_t status_to_toggle, int32_t enabled) {
+		if(enabled)
+			status |= status_to_toggle;
+		else
+			status &= ~status_to_toggle;
+	}
+	// match at least 1 status
+	int32_t get_status(uint32_t status_to_check) const {
+		return (int32_t)(status & status_to_check);
+	}
+	// match all statuses
+	int32_t is_status(uint32_t status_to_check) const {
+		return (status & status_to_check) == status_to_check;
+	}
 	uint32_t get_column_zone(int32_t loc1, int32_t left, int32_t right);
 	void get_column_cards(card_set* cset, int32_t left, int32_t right);
 	int32_t is_all_column();
@@ -213,7 +256,6 @@ public:
 	void unequip();
 	int32_t get_union_count();
 	int32_t get_old_union_count();
-	void xyz_overlay(card_set* materials);
 	void xyz_add(card* mat);
 	void xyz_remove(card* mat);
 	void apply_field_effect();
@@ -264,7 +306,7 @@ public:
 	void filter_spsummon_procedure_g(uint8_t playerid, effect_set* eset);
 	effect* is_affected_by_effect(int32_t code);
 	effect* is_affected_by_effect(int32_t code, card* target);
-	int32_t get_card_effect(uint32_t code);
+	void get_card_effect(uint32_t code, effect_set* eset);
 	int32_t fusion_check(group* fusion_m, group* cg, uint32_t chkf);
 	void fusion_filter_valid(group* fusion_m, group* cg, uint32_t chkf, effect_set* eset);
 	int32_t check_fusion_substitute(card* fcard);
@@ -287,6 +329,7 @@ public:
 	int32_t is_setable_mzone(uint8_t playerid, uint8_t ignore_count, effect* peffect, uint8_t min_tribute, uint32_t zone = 0x1f);
 	int32_t is_setable_szone(uint8_t playerid, uint8_t ignore_fd = 0);
 	int32_t is_affect_by_effect(effect* peffect);
+	int32_t is_can_be_disabled_by_effect(effect* reason_effect);
 	int32_t is_destructable();
 	int32_t is_destructable_by_battle(card* pcard);
 	effect* check_indestructable_by_effect(effect* peffect, uint8_t playerid);
@@ -317,7 +360,7 @@ public:
 	int32_t is_can_be_fusion_material(card* fcard, uint64_t summon_type, uint8_t playerid);
 	int32_t is_can_be_synchro_material(card* scard, uint8_t playerid, card* tuner = 0);
 	int32_t is_can_be_ritual_material(card* scard, uint8_t playerid);
-	int32_t is_can_be_xyz_material(card* scard, uint8_t playerid);
+	int32_t is_can_be_xyz_material(card* scard, uint8_t playerid, uint32_t reason);
 	int32_t is_can_be_link_material(card* scard, uint8_t playerid);
 	int32_t is_can_be_material(card* scard, uint64_t sumtype, uint8_t playerid);
 	bool recreate(uint32_t code);

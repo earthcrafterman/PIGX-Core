@@ -54,10 +54,10 @@ public:
 	int32_t label_object{};
 	int32_t condition{};
 	int32_t cost{};
-	int32_t target{};;
+	int32_t target{};
 	int32_t value{};
 	int32_t operation{};
-	std::vector<uint32_t> label;
+	std::vector<lua_Integer> label;
 
 	explicit effect(duel* pd) : lua_obj_helper(pd) {};
 	~effect() = default;
@@ -83,12 +83,12 @@ public:
 	void dec_count(uint32_t playerid = 2);
 	void recharge();
 	uint8_t get_client_mode() const;
-	int32_t get_value(uint32_t extraargs = 0);
-	int32_t get_value(card* pcard, uint32_t extraargs = 0);
-	int32_t get_value(effect* peffect, uint32_t extraargs = 0);
-	void get_value(uint32_t extraargs, std::vector<int32_t>* result);
-	void get_value(card* pcard, uint32_t extraargs, std::vector<int32_t>* result);
-	void get_value(effect* peffect, uint32_t extraargs, std::vector<int32_t>* result);
+	lua_Integer get_value(uint32_t extraargs = 0);
+	lua_Integer get_value(card* pcard, uint32_t extraargs = 0);
+	lua_Integer get_value(effect* peffect, uint32_t extraargs = 0);
+	void get_value(uint32_t extraargs, std::vector<lua_Integer>& result);
+	void get_value(card* pcard, uint32_t extraargs, std::vector<lua_Integer>& result);
+	void get_value(effect* peffect, uint32_t extraargs, std::vector<lua_Integer>& result);
 	int32_t check_value_condition(uint32_t extraargs = 0);
 	void* get_label_object();
 	int32_t get_speed();
@@ -98,22 +98,23 @@ public:
 	card* get_handler() const;
 	uint8_t get_handler_player();
 	int32_t in_range(card* pcard);
+	int32_t is_in_range_of_symbolic_mzone(card* pcard);
 	int32_t in_range(const chain& ch);
 	void set_activate_location();
 	void set_active_type();
 	uint32_t get_active_type();
-	bool is_flag(effect_flag _flag) const {
-		return !!(this->flag[0] & _flag);
+	bool is_flag(effect_flag flag_to_check) const {
+		return !!(flag[0] & flag_to_check);
 	}
-	bool is_flag(effect_flag2 _flag) const {
-		return !!(this->flag[1] & _flag);
+	bool is_flag(effect_flag2 flag_to_check) const {
+		return !!(flag[1] & flag_to_check);
 	}
 };
 
 //status
 #define EFFECT_STATUS_AVAILABLE 0x0001
 //#define EFFECT_STATUS_ACTIVATED 0x0002
-#define EFFECT_STATUS_SPSELF    0x0004
+#define EFFECT_STATUS_SUMMON_SELF    0x0004
 
 #define EFFECT_COUNT_CODE_OATH   0x1
 #define EFFECT_COUNT_CODE_DUEL   0x2
@@ -195,9 +196,10 @@ enum effect_flag : uint32_t {
 	EFFECT_FLAG_IMMEDIATELY_APPLY = 0x80000000,
 };
 enum effect_flag2 : uint32_t {
-//	EFFECT_FLAG2_NAGA               = 0x0001,
+	EFFECT_FLAG2_CONTINUOUS_EQUIP   = 0x0001,
 	EFFECT_FLAG2_COF                = 0x0002,
 	EFFECT_FLAG2_CHECK_SIMULTANEOUS = 0x0004,
+	EFFECT_FLAG2_FORCE_ACTIVATE_LOCATION = 0x40000000,
 	EFFECT_FLAG2_MAJESTIC_MUST_COPY = 0x80000000,
 };
 inline effect_flag operator|(effect_flag flag1, effect_flag flag2)

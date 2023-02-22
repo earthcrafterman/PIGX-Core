@@ -2,10 +2,7 @@
 
 set -euxo pipefail
 
-if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
-	./premake5.exe vs2017;
-    "$MSBUILD_PATH/msbuild.exe" -m -p:Configuration=$BUILD_CONFIG ./build/ocgcore.sln;
-else
-	./premake5 gmake2;
-	make -Cbuild -j2 config=$BUILD_CONFIG;
-fi
+PREMAKE_FLAGS=""
+
+./premake5.exe vs2019 --oldwindows=true;
+dotnet msbuild -p:Configuration=release -p:Platform=Win32 -t:ocgcoreshared  -verbosity:minimal -p:EchoOff=true ./build/ocgcore.sln;
